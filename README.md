@@ -19,7 +19,7 @@
 #### 步驟 1: 安裝 UV 套件管理器
 ```powershell
 # Windows PowerShell
-irm https://astral.sh/uv/install.ps1 | iex
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 #### 步驟 2: 複製專案
