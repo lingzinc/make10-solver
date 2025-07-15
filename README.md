@@ -59,7 +59,7 @@ uv run run_training.py
 ```bash
 # 執行測試
 uv run pytest -v                          # 執行所有測試
-uv run pytest --cov=src --cov-report=html # 生成覆蓋率報告
+uv run pytest --cov=. --cov-report=term-missing # 顯示覆蓋率和缺失行數
 ```
 
 ## ⚡ 技術架構

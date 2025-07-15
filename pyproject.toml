@@ -45,6 +45,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest==8.4.1", # 單元測試和整合測試
+    "pytest-cov",    # 測試覆蓋率報告
     "ruff",   # 程式碼格式化和品質檢查
     "mypy",   # 靜態類型檢查
 ]
@@ -78,4 +79,5 @@ disallow_untyped_defs = true
 [dependency-groups]
 dev = [
     "pytest==8.4.1",
+    "pytest-cov>=6.2.1",
 ]

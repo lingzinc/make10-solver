@@ -87,6 +87,11 @@ uv run pytest --maxfail=2
 
 ## 📊 **測試報告**
 
+### 覆蓋率報告
+```bash
+uv run pytest --cov=. --cov-report=term-missing   # 終端顯示缺失行數
+```
+
 ### JUnit XML 報告
 ```bash
 uv run pytest --junitxml=reports/junit.xml
