@@ -27,27 +27,24 @@ classifiers = [
 ]
 dependencies = [
     # 核心電腦視覺和圖像處理
-    "opencv-python", # 電腦視覺處理 (霍夫直線、模板匹配)
-    "numpy",         # 數值計算和陣列處理
-    "pillow",        # 圖像處理和格式轉換
-
+    "opencv-python==4.12.0.88", # 電腦視覺處理 (霍夫直線、模板匹配)
+    "numpy==2.1.3", # 數值計算和陣列處理
+    "pillow==11.3.0", # 圖像處理和格式轉換
     # 自動化控制
-    "mss",    # 高效螢幕擷取
-    "pynput", # 滑鼠鍵盤自動化控制
-
+    "mss==10.0.0", # 高效螢幕擷取
+    "pynput==1.8.1", # 滑鼠鍵盤自動化控制
     # 機器學習框架
-    "tensorflow", # 深度學習模型訓練和推理
-
+    "tensorflow==2.19.0", # 深度學習模型訓練和推理
     # 數據處理和分析
-    "pandas", # 數據分析和CSV處理
-
+    "pandas==2.3.1", # 數據分析和CSV處理
     # 記錄和除錯工具
-    "loguru", # 進階日誌記錄
+    "loguru==0.7.3", # 進階日誌記錄
+    "easydict==1.13",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest", # 單元測試和整合測試
+    "pytest==8.4.1", # 單元測試和整合測試
     "ruff",   # 程式碼格式化和品質檢查
     "mypy",   # 靜態類型檢查
 ]
@@ -75,3 +72,8 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[dependency-groups]
+dev = [
+    "pytest==8.4.1",
+]

@@ -1,3 +1,6 @@
+# Debug output directory
+debug_output/
+
 # Python
 __pycache__/
 *.py[cod]
