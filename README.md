@@ -14,21 +14,21 @@
 - **套件管理器**: [UV](https://docs.astral.sh/uv/) (現代化 Python 套件管理工具)
 - **Git**: 用於版本控制和專案複製
 
-### 1. 環境設定
+### 🔧 環境設定
 
-#### 步驟 1: 安裝 UV 套件管理器
+#### 步驟一: 安裝 UV 套件管理器
 ```powershell
 # Windows PowerShell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-#### 步驟 2: 複製專案
+#### 步驟二: 複製專案
 ```bash
 git clone https://github.com/lingzinc/make10-solver.git
 cd make10-solver
 ```
 
-#### 步驟 3: 建立虛擬環境並安裝相依性
+#### 步驟三: 建立虛擬環境並安裝相依性
 ```bash
 # 建立虛擬環境
 uv venv .venv
@@ -40,7 +40,7 @@ uv sync --dev
 .venv\Scripts\activate
 ```
 
-### 2. 專案執行
+### 🎯 專案執行
 
 #### 🎮 執行自動化系統
 ```bash
@@ -54,11 +54,11 @@ uv run run_system.py
 uv run run_training.py
 ```
 
-### 3. 品質保證
+### 🧪 品質保證
 
 ```bash
 # 執行測試
-uv run pytest -v                          # 執行所有測試
+uv run pytest -v                                # 執行所有測試
 uv run pytest --cov=. --cov-report=term-missing # 顯示覆蓋率和缺失行數
 ```
 
