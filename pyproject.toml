@@ -1,0 +1,77 @@
+[project]
+name = "make10"
+version = "0.1.0"
+description = "Make10 遊戲自動化系統 - 基於電腦視覺和機器學習的自動化工具，能夠自動檢測、分析並解決 Make10 數字拼圖遊戲"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "lingzi", email = "lingziha@gmail.com" }]
+keywords = [
+    "game-automation",
+    "computer-vision",
+    "tensorflow",
+    "opencv",
+    "ai",
+    "machine-learning",
+    "puzzle-solver",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Games/Entertainment :: Puzzle Games",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+    # 核心電腦視覺和圖像處理
+    "opencv-python", # 電腦視覺處理 (霍夫直線、模板匹配)
+    "numpy",         # 數值計算和陣列處理
+    "pillow",        # 圖像處理和格式轉換
+
+    # 自動化控制
+    "mss",    # 高效螢幕擷取
+    "pynput", # 滑鼠鍵盤自動化控制
+
+    # 機器學習框架
+    "tensorflow", # 深度學習模型訓練和推理
+
+    # 數據處理和分析
+    "pandas", # 數據分析和CSV處理
+
+    # 記錄和除錯工具
+    "loguru", # 進階日誌記錄
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest", # 單元測試和整合測試
+    "ruff",   # 程式碼格式化和品質檢查
+    "mypy",   # 靜態類型檢查
+]
+
+
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
