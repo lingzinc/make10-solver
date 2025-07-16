@@ -1,0 +1,11 @@
+{
+  "labeling_sessions": [],
+  "auto_labeling_runs": [],
+  "manual_labeling_stats": {
+    "total_manually_labeled": 0,
+    "average_labeling_time_per_image": 0,
+    "labeling_accuracy": 0
+  },
+  "quality_checks": [],
+  "last_updated": "2025-07-17"
+}

@@ -1,0 +1,25 @@
+{
+  "dataset_version": "1.0.0",
+  "created_date": "2025-07-17",
+  "description": "Make10 數字辨識訓練資料集",
+  "num_classes": 10,
+  "classes": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+  "image_format": "png",
+  "image_size": "224x224",
+  "total_images": 0,
+  "labeled_images": 0,
+  "unlabeled_images": 0,
+  "statistics": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0,
+    "8": 0,
+    "9": 0
+  },
+  "last_updated": "2025-07-17"
+}

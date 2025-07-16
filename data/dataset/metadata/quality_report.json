@@ -1,0 +1,25 @@
+{
+  "image_quality_checks": {
+    "total_processed": 0,
+    "passed": 0,
+    "rejected_blurry": 0,
+    "rejected_corrupted": 0,
+    "rejected_invalid": 0
+  },
+  "label_quality_checks": {
+    "consistency_score": 0,
+    "inter_annotator_agreement": 0,
+    "confidence_distribution": {
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    }
+  },
+  "model_performance": {
+    "auto_labeling_accuracy": 0,
+    "precision_per_class": {},
+    "recall_per_class": {},
+    "f1_score_per_class": {}
+  },
+  "last_updated": "2025-07-17"
+}
