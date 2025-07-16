@@ -91,9 +91,10 @@ desktop.ini
 # ======================================
 # 機器學習與 AI 模型
 # ======================================
-# 模型檔案
+# 訓練好的模型檔案
 *.h5
 *.hdf5
+*.keras
 *.pkl
 *.pickle
 *.joblib
@@ -102,45 +103,89 @@ desktop.ini
 *.pt
 *.onnx
 *.pb
+*.weights
+*.ckpt
+*.safetensors
 
-# 訓練相關
-data/training/
+# 模型 Metadata
+model_metadata.json
+training_history.json
+
+# TensorBoard 日誌
+*.tfevents.*
+tf_logs/
+runs/
+
+# 模型評估結果
+evaluation_results/
+model_performance/
+confusion_matrices/
+
+# 訓練相關檔案
 checkpoints/
 tensorboard_logs/
 wandb/
 mlruns/
 
-# TensorFlow
-*.tfevents.*
-tf_logs/
+# 資料集與模型檔案
+data/dataset/labeled/*/
+data/dataset/unlabeled/*/
+data/models/checkpoints/
+data/models/exports/
+!data/dataset/labeled/README.md
+!data/dataset/unlabeled/pending_manual/README.md
+
+# 保留重要的資料集管理檔案
+!data/dataset/metadata/*.json
+!data/dataset/unlabeled/auto_labeled/metadata/*.json
+!data/DATA_STRUCTURE.md
+
+data/temp/
+data/cache/
+data/raw_captures/
 
 # ======================================
 # 專案特定資料與日誌
 # ======================================
-# 日誌檔案
+# 應用程式日誌
 logs/
 *.log
 game_logs/
 automation_logs/
+training_logs/
+labeling_logs/
 
-# 調試與輸出
+# 系統運行資料
+runtime_data/
+performance_metrics/
+system_stats/
+
+# 調試與開發
 debug_output/
+profiling_results/
+
+# 螢幕截圖與圖像檔案
+screenshots/
+temp_images/
 captured_frames/
 debug_images/
 test_screenshots/
-
-# 螢幕截圖與臨時圖片
-screenshots/
-temp_images/
 *.png
 *.jpg
 *.jpeg
 *.bmp
 *.tiff
-# 保留範例圖片
+*.gif
+*.webp
+
+# 保留重要圖像檔案
+!data/assets/templates/*.png
+!docs/**/*.png
+!docs/**/*.jpg
 !example_*.png
 !sample_*.jpg
 !demo_*.jpeg
+!README_*.png
 
 # ======================================
 # 敏感設定檔案
@@ -157,6 +202,10 @@ credentials.json
 *.temp
 temp/
 tmp/
+
+# 根目錄文件檔案 (保留 README)
+/*.md
+!README.md
 
 # ======================================
 # 其他框架特定檔案
@@ -199,3 +248,40 @@ celerybeat.pid
 
 # PyBuilder
 target/
+
+# ======================================
+# 數字辨識模組特定檔案
+# ======================================
+# 標記工作暫存檔案
+.labeling_session
+.annotation_cache
+labeling_backup/
+
+# 自動標記系統暫存
+auto_labeling_temp/
+prediction_cache/
+confidence_scores/
+
+# 品質檢查結果
+quality_check_results/
+label_consistency_reports/
+annotation_errors/
+
+# 資料集統計快取
+dataset_stats_cache/
+class_distribution_cache/
+
+# 人工標記工具設定
+annotation_tool_config.json
+labeling_preferences.json
+user_shortcuts.json
+
+# 模型比較與實驗
+model_experiments/
+ab_testing_results/
+hyperparameter_search/
+
+# 生產環境設定
+production_config/
+deployment_settings/
+api_keys.env
