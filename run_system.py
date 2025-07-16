@@ -12,7 +12,7 @@ sys.path.insert(0, str(src_path))
 from src.core.main import main  # noqa: E402
 
 
-def setup_logging():
+def setup_logging() -> None:
     """設定系統日誌"""
     # 建立 logs 目錄
     logs_dir = Path("logs")
@@ -39,7 +39,7 @@ def setup_logging():
     )
 
 
-def check_dependencies():
+def check_dependencies() -> bool:
     """檢查系統相依性"""
     required_packages = {
         "cv2": "opencv-python",

@@ -43,7 +43,7 @@ class KeyboardListener:
                 # 處理普通字元鍵
                 key_name = str(key).replace("'", "").lower()
 
-            logger.debug(f"偵測到按鍵: {key_name}")
+            # logger.debug(f"偵測到按鍵: {key_name}")
 
             # 檢查是否為退出按鍵
             if key_name == self.exit_key:
