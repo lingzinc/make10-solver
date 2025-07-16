@@ -6,29 +6,27 @@
 
 ### 📋 系統需求
 
-#### 基本環境
+#### 基本環境 & 必要工具
 - **作業系統**: Windows 10/11
 - **Python**: 3.12+ (建議使用最新版本)
-
-#### 必要工具
 - **套件管理器**: [UV](https://docs.astral.sh/uv/) (現代化 Python 套件管理工具)
 - **Git**: 用於版本控制和專案複製
 
 ### 🔧 環境設定
 
-#### 步驟一: 安裝 UV 套件管理器
+#### 步驟一 | 安裝 UV 套件管理器
 ```powershell
 # Windows PowerShell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-#### 步驟二: 複製專案
+#### 步驟二 | 複製專案
 ```bash
 git clone https://github.com/lingzinc/make10-solver.git
 cd make10-solver
 ```
 
-#### 步驟三: 建立虛擬環境並安裝相依性
+#### 步驟三 | 建立虛擬環境並安裝相依性
 ```bash
 # 建立虛擬環境
 uv venv .venv
