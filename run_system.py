@@ -4,9 +4,6 @@ from src.core.main import main
 
 
 def run_system():
-    """執行系統主程式"""
-    print("=== Make10 遊戲自動化系統 ===")
-    print("正在啟動系統執行模式...")
     # TODO: 整合系統各模組
     # - 初始化電腦視覺模組
     # - 載入AI模型
