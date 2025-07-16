@@ -28,7 +28,6 @@ class TestConfigurationObject:
         assert hasattr(cfg, "ASSETS_DIR")
         assert hasattr(cfg, "PATHS")
         assert hasattr(cfg, "IMAGE")
-        assert hasattr(cfg, "HOUGH")
         assert hasattr(cfg, "MODEL")
         assert hasattr(cfg, "AUTOMATION")
         assert hasattr(cfg, "GAME")
@@ -66,21 +65,6 @@ class TestConfigurationObject:
         assert "canny_threshold1" in preprocessing
         assert "canny_threshold2" in preprocessing
         assert "morph_kernel_size" in preprocessing
-
-    def test_hough_parameters_structure(self):
-        """測試霍夫直線檢測參數結構"""
-        hough = cfg.HOUGH
-
-        required_params = [
-            "rho",
-            "theta_resolution",
-            "threshold",
-            "min_line_length",
-            "max_line_gap",
-        ]
-
-        for param in required_params:
-            assert param in hough
 
     def test_model_parameters_structure(self):
         """測試 AI 模型參數結構"""
@@ -235,7 +219,6 @@ class TestInitializeSettings:
         assert isinstance(result, dict)
         assert "paths" in result
         assert "image_processing" in result
-        assert "hough_params" in result
         assert "model_config" in result
         assert "automation_config" in result
         assert "game_detection" in result

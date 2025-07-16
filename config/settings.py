@@ -15,11 +15,6 @@ from .constants import (
     CELL_SIZE,
     CLICK_DELAY,
     DRAG_DELAY,
-    HOUGH_MAX_LINE_GAP,
-    HOUGH_MIN_LINE_LENGTH,
-    HOUGH_RHO,
-    HOUGH_THETA_RESOLUTION,
-    HOUGH_THRESHOLD,
     MODEL_BATCH_SIZE,
     MODEL_CONFIDENCE_THRESHOLD,
     MODEL_VOTING_THRESHOLD,
@@ -73,17 +68,6 @@ cfg.IMAGE.PROCESSING = EasyDict(
                 "morph_kernel_size": (3, 3),
             }
         ),
-    }
-)
-
-# 霍夫直線檢測參數
-cfg.HOUGH = EasyDict(
-    {
-        "rho": HOUGH_RHO,
-        "theta_resolution": HOUGH_THETA_RESOLUTION,
-        "threshold": HOUGH_THRESHOLD,
-        "min_line_length": HOUGH_MIN_LINE_LENGTH,
-        "max_line_gap": HOUGH_MAX_LINE_GAP,
     }
 )
 
@@ -185,7 +169,6 @@ def initialize_settings() -> dict[str, any]:
             "asset_paths": cfg.PATHS.ASSETS,
         },
         "image_processing": cfg.IMAGE.PROCESSING,
-        "hough_params": cfg.HOUGH,
         "model_config": cfg.MODEL,
         "automation_config": cfg.AUTOMATION,
         "game_detection": cfg.GAME,
