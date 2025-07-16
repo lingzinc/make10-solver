@@ -3,18 +3,20 @@ Make10 遊戲自動化系統 - 遊戲常數定義
 包含基本的遊戲規則和系統常數
 """
 
-# 圖像處理常數
-CELL_SIZE = (28, 28)
+# 圖像處理常數 (ResNet50 版本)
+CELL_SIZE = (224, 224)  # ResNet50 標準輸入尺寸
 BOARD_SIZE = (10, 25)
 
 # 圖像預處理常數
 CANNY_THRESHOLD1 = 50
 CANNY_THRESHOLD2 = 150
 
-# AI 模型常數
-MODEL_BATCH_SIZE = 32
-MODEL_CONFIDENCE_THRESHOLD = 0.7
+# ResNet50 AI 模型常數
+MODEL_BATCH_SIZE = 16  # ResNet50 記憶體需求較大，減少批次大小
+MODEL_CONFIDENCE_THRESHOLD = 0.9  # 提高信心度閾值
 MODEL_VOTING_THRESHOLD = 0.8
+MODEL_INPUT_CHANNELS = 3  # RGB 三通道
+MODEL_FINE_TUNE_LAYERS = 20  # 微調的層數
 
 # 自動化控制常數
 CLICK_DELAY = 0.1

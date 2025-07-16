@@ -39,9 +39,13 @@ cfg.ASSETS_DIR = cfg.DATA_DIR / "assets"
 cfg.PATHS = EasyDict()
 cfg.PATHS.MODEL = EasyDict(
     {
-        "main_model": cfg.MODEL_DIR / "exports" / "model.keras",
+        "main_model": cfg.MODEL_DIR
+        / "exports"
+        / "resnet50_model.keras",  # 更新為 ResNet50 模型
         "checkpoints_dir": cfg.MODEL_DIR / "checkpoints",
         "exports_dir": cfg.MODEL_DIR / "exports",
+        "resnet50_stage1": cfg.MODEL_DIR / "checkpoints" / "stage1_best.keras",
+        "resnet50_stage2": cfg.MODEL_DIR / "checkpoints" / "stage2_best.keras",
     }
 )
 
@@ -54,12 +58,14 @@ cfg.PATHS.TRAINING = EasyDict(
 
 cfg.PATHS.ASSETS = EasyDict({"templates_dir": cfg.ASSETS_DIR / "templates"})
 
-# 圖像處理參數
+# 圖像處理參數 (ResNet50 版本)
 cfg.IMAGE = EasyDict()
 cfg.IMAGE.PROCESSING = EasyDict(
     {
-        "cell_size": CELL_SIZE,
+        "cell_size": CELL_SIZE,  # (224, 224) for ResNet50
         "board_size": BOARD_SIZE,
+        "input_channels": 3,  # RGB 三通道
+        "preprocessing_method": "resnet50",  # ResNet50 預處理方法
         "preprocessing": EasyDict(
             {
                 "gaussian_blur_kernel": (3, 3),
@@ -71,14 +77,46 @@ cfg.IMAGE.PROCESSING = EasyDict(
     }
 )
 
-# AI 模型參數
+# ResNet50 AI 模型參數
 cfg.MODEL = EasyDict(
     {
-        "input_shape": (28, 28, 1),
+        "input_shape": (224, 224, 3),  # ResNet50 標準輸入
         "num_classes": 10,
-        "batch_size": MODEL_BATCH_SIZE,
-        "confidence_threshold": MODEL_CONFIDENCE_THRESHOLD,
+        "batch_size": MODEL_BATCH_SIZE,  # 16 for ResNet50
+        "confidence_threshold": MODEL_CONFIDENCE_THRESHOLD,  # 0.9
         "voting_threshold": MODEL_VOTING_THRESHOLD,
+        "use_pretrained": True,  # 使用 ImageNet 預訓練權重
+        "fine_tune_layers": 20,  # 微調層數
+        "architecture": "resnet50",  # 模型架構類型
+    }
+)
+
+# ResNet50 訓練參數
+cfg.TRAINING = EasyDict(
+    {
+        "epochs_stage1": 10,  # 第一階段訓練輪數 (凍結預訓練層)
+        "epochs_stage2": 20,  # 第二階段訓練輪數 (微調)
+        "learning_rate_stage1": 0.001,  # 第一階段學習率
+        "learning_rate_stage2": 0.0001,  # 第二階段學習率 (較小)
+        "validation_split": 0.2,  # 驗證集比例
+        "early_stopping_patience": 15,  # 早停忍耐度
+        "reduce_lr_patience": 5,  # 學習率衰減忍耐度
+        "reduce_lr_factor": 0.5,  # 學習率衰減倍數
+    }
+)
+
+# ResNet50 資料擴增參數
+cfg.DATA_AUGMENTATION = EasyDict(
+    {
+        "rotation_range": 10,  # 旋轉角度範圍
+        "width_shift_range": 0.1,  # 水平移動範圍
+        "height_shift_range": 0.1,  # 垂直移動範圍
+        "zoom_range": 0.1,  # 縮放範圍
+        "brightness_range": [0.8, 1.2],  # 亮度調整範圍
+        "horizontal_flip": False,  # 不水平翻轉 (數字會變形)
+        "vertical_flip": False,  # 不垂直翻轉
+        "fill_mode": "constant",  # 填充模式
+        "cval": 0.0,  # 填充值
     }
 )
 
