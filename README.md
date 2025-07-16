@@ -16,9 +16,9 @@
 ## 🌟 功能特色
 
 - 🎯 **智慧遊戲檢測** - 基於 OpenCV 的遊戲畫面自動識別
-- 🧠 **AI 數字識別** - TensorFlow CNN 模型進行數字辨識
+- 🧠 **ResNet50 數字識別** - 基於 TensorFlow ResNet50 的深度學習數字辨識
 - 🎮 **自動化操作** - 精確的滑鼠控制與螢幕切換
-- � **即時分析** - 遊戲狀態分析與策略計算
+- ⚡ **即時分析** - 遊戲狀態分析與策略計算
 - 🔧 **模組化設計** - 可擴展的元件化架構
 - 🧪 **完整測試** - 高覆蓋率的自動化測試
 
@@ -51,7 +51,7 @@ pip install -r requirements.txt
 # 啟動自動化系統
 uv run run_system.py
 
-# AI 模型訓練 (開發中)
+# AI 模型訓練 (ResNet50)
 uv run run_training.py
 
 # 執行測試
@@ -72,7 +72,7 @@ graph TD
     B --> B2[螢幕擷取 MSS]
     B --> B3[模板匹配]
     
-    C --> C1[TensorFlow CNN]
+    C --> C1[TensorFlow ResNet50]
     C --> C2[數字識別]
     C --> C3[預測系統]
     

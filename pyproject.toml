@@ -1,7 +1,7 @@
 [project]
 name = "make10"
 version = "0.1.0"
-description = "Make10 遊戲自動化系統 - 基於電腦視覺和機器學習的自動化工具，能夠自動檢測、分析並解決 Make10 數字拼圖遊戲"
+description = "Make10 遊戲自動化系統 - 基於電腦視覺和 ResNet50 深度學習的自動化工具，能夠自動檢測、分析並解決 Make10 數字拼圖遊戲"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "lingzi", email = "lingziha@gmail.com" }]
@@ -9,6 +9,8 @@ keywords = [
     "game-automation",
     "computer-vision",
     "tensorflow",
+    "resnet50",
+    "deep-learning",
     "opencv",
     "ai",
     "machine-learning",

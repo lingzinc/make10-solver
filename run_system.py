@@ -44,6 +44,7 @@ def check_dependencies() -> bool:
     required_packages = {
         "cv2": "opencv-python",
         "numpy": "numpy",
+        "tensorflow": "tensorflow",  # 新增 TensorFlow 檢查
         "pynput": "pynput",
         "loguru": "loguru",
         "easydict": "easydict",
