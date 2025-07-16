@@ -33,3 +33,6 @@ AUTOMATION_TIMEOUT = 30
 
 # 遊戲檢測常數
 TEMPLATE_MATCH_THRESHOLD = 0.8
+
+# 系統控制常數
+SYSTEM_EXIT_KEY = "f8"  # 系統優雅退出按鍵

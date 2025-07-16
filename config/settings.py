@@ -26,6 +26,7 @@ from .constants import (
     RETRY_ATTEMPTS,
     SCREEN_SWITCH_DELAY,
     SCREENSHOT_DELAY,
+    SYSTEM_EXIT_KEY,
     TEMPLATE_MATCH_THRESHOLD,
 )
 
@@ -109,12 +110,19 @@ cfg.AUTOMATION = EasyDict(
     }
 )
 
+# 系統控制參數
+cfg.SYSTEM = EasyDict(
+    {
+        "exit_key": SYSTEM_EXIT_KEY,
+    }
+)
+
 # 螢幕和遊戲檢測參數
 cfg.GAME = EasyDict(
     {
         "template_match_threshold": TEMPLATE_MATCH_THRESHOLD,
         "screen_capture_region": None,  # None 表示全螢幕
-        "reset_button_template": "resetButton.png",
+        "reset_button_template": ["reset_button_b.png", "reset_button_w.png"],
     }
 )
 
