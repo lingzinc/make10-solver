@@ -30,7 +30,6 @@ class GameAutomationSystem:
         """初始化系統核心模組"""
         logger.info("初始化 Make10 遊戲自動化系統...")
         logger.debug("載入系統配置...")
-        logger.warning("這是一個測試警告訊息")
 
         # 初始化按鍵監聽器
         self.keyboard_listener = create_keyboard_listener(self.request_exit)
@@ -41,6 +40,45 @@ class GameAutomationSystem:
         # TODO: 初始化自動化控制模組
         self.initialized = True
         logger.info("系統核心模組初始化完成")
+
+    def _detect_game_board(self):
+        """偵測遊戲盤面 - 私有方法"""
+        from automation.screen_utils import capture_screen
+
+        logger.info("開始偵測遊戲盤面...")
+        screen_image = capture_screen()
+
+        if screen_image is None:
+            logger.error("無法截取螢幕畫面")
+            return None
+
+        return self._process_board_detection(screen_image)
+
+    def _process_board_detection(self, screen_image):
+        """處理盤面偵測邏輯 - 私有方法"""
+        try:
+            # 初始化方格偵測器
+            from ai.grid_detector import GridDetector
+
+            grid_detector = GridDetector()
+
+            # 偵測盤面資訊
+            board_info = grid_detector.detect_board_from_screen_image(
+                screen_image, enable_validation=False
+            )
+
+            if board_info["success"]:
+                # TODO: 將盤面資訊傳遞給後續的數字識別模組
+                # TODO: 實作數字識別邏輯
+                # TODO: 實作遊戲求解演算法
+                return board_info
+            else:
+                logger.error(f"❌ {board_info['message']}")
+                return None
+
+        except Exception as e:
+            logger.error(f"盤面偵測過程發生錯誤: {e}")
+            return None
 
     def run_game_loop(self):
         """執行主要遊戲自動化流程（單次執行）"""
@@ -61,20 +99,24 @@ class GameAutomationSystem:
         logger.info("搜尋 reset 按鈕")
         reset_position = find_reset_button()
 
-        if reset_position:
-            x, y = reset_position
-            logger.info(f"成功找到 reset 按鈕，座標: ({x}, {y})")
-
-            # 移動滑鼠並點擊 reset 按鈕
-            if click_at_position(x, y):
-                logger.info("成功點擊 reset 按鈕")
-                time.sleep(0.5)  # 等待按鈕響應
-
-                logger.info("盤面檢測功能已移除")
-            else:
-                logger.error("點擊 reset 按鈕失敗")
-        else:
+        # 早期返回模式，減少巢狀結構
+        if not reset_position:
             logger.warning("未找到 reset 按鈕")
+            return
+
+        x, y = reset_position
+        logger.info(f"找到 reset 按鈕，座標: ({x}, {y})")
+
+        # 點擊 reset 按鈕
+        if not click_at_position(x, y):
+            logger.error("點擊 reset 按鈕失敗")
+            return
+
+        logger.info("成功點擊 reset 按鈕")
+        time.sleep(0.5)  # 等待按鈕響應
+
+        # 偵測遊戲盤面
+        self._detect_game_board()
 
         switch_screen()
         time.sleep(cfg.AUTOMATION.screen_switch_delay)
