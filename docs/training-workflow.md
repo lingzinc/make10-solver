@@ -1,51 +1,58 @@
-# 模型訓練工作流程
+# ResNet50 模型訓練工作流程
 
-🎓 本指南詳細說明 Make10 專案中 AI 模型的訓練工作流程、資料管理與模型生命週期。
+🎓 本指南詳細說明 Make10 專案中基於 ResNet50 的 AI 模型訓練工作流程、資料管理與模型生命週期。
 
-## 🔄 訓練工作流程概覽
+## 🔄 ResNet50 訓練工作流程概覽
 
 ### 完整訓練管道
 ```
-資料收集 → 資料標註 → 預處理 → 模型訓練 → 驗證評估 → 模型部署 → 監控反饋
-    ↓           ↓           ↓           ↓           ↓           ↓           ↓
-📷 擷取        🏷️ 人工      🔧 增強      🧠 CNN      📊 測試      🚀 上線      📈 調整
-Cell 圖像      標註數字     正規化       訓練        準確率       模型        效能
+資料收集 → 資料標註 → 預處理 → 遷移學習 → 微調訓練 → 驗證評估 → 模型部署 → 監控反饋
+    ↓           ↓           ↓           ↓           ↓           ↓           ↓           ↓
+📷 擷取        🏷️ 人工      🔧 RGB      🧠 ImageNet  🎯 Fine     📊 測試      🚀 上線      📈 調整
+Cell 圖像      標註數字     224x224     預訓練      Tuning      準確率       模型        效能
 ```
 
-## 📊 資料管理工作流程
+## 📊 ResNet50 專用資料管理
 
-### 1. 資料收集階段
+### 1. 資料收集階段 (針對 ResNet50 優化)
 
-#### 自動化資料收集
+#### 高解析度資料收集
 ```python
-def automated_data_collection(num_games=10, cells_per_game=250):
-    """自動化遊戲資料收集"""
+def collect_high_resolution_data(num_games=10, target_size=(224, 224)):
+    """為 ResNet50 收集高解析度資料"""
     
     collected_data = []
     
     for game_idx in range(num_games):
-        print(f"收集第 {game_idx + 1} 場遊戲資料...")
+        print(f"收集第 {game_idx + 1} 場遊戲高解析度資料...")
         
         # 啟動遊戲並等待穩定
         start_new_game()
         time.sleep(2)
         
-        # 擷取完整盤面
-        board_image = capture_game_board()
+        # 擷取完整盤面 (高解析度)
+        board_image = capture_game_board(scale_factor=2.0)  # 2倍解析度
         
-        # 分割成個別 cell
-        cell_images = extract_cell_images(board_image)
+        # 分割成個別 cell 並保持高解析度
+        cell_images = extract_cell_images_hd(board_image, target_size)
         
-        # 儲存每個 cell
+        # 儲存每個 cell (保存為 RGB 格式)
         for cell_idx, cell_img in enumerate(cell_images):
-            filename = f"game_{game_idx:03d}_cell_{cell_idx:03d}.png"
-            filepath = save_cell_image(cell_img, filename)
+            # 確保 RGB 格式
+            if len(cell_img.shape) == 2:
+                cell_img = cv2.cvtColor(cell_img, cv2.COLOR_GRAY2RGB)
+            elif cell_img.shape[2] == 4:
+                cell_img = cv2.cvtColor(cell_img, cv2.COLOR_BGRA2RGB)
+            
+            filename = f"resnet_game_{game_idx:03d}_cell_{cell_idx:03d}.png"
+            filepath = save_cell_image_rgb(cell_img, filename)
             
             collected_data.append({
                 'filename': filename,
                 'filepath': filepath,
                 'game_id': game_idx,
                 'cell_id': cell_idx,
+                'resolution': cell_img.shape,
                 'timestamp': datetime.now()
             })
     
@@ -539,8 +546,8 @@ class AdvancedTrainingPipeline:
                 print(f"驗證準確率: {val_score:.4f}")
                 
                 if val_score > best_score:
-                    best_score = val_score
-                    best_params = param_dict
+                    best_score = val_score;
+                    best_params = param_dict;
                     
             except Exception as e:
                 print(f"參數組合失敗: {e}")
@@ -553,292 +560,355 @@ class AdvancedTrainingPipeline:
         return best_params, results
 ```
 
-### 模型訓練監控
+## 🏃‍♂️ ResNet50 訓練流程設計
+
+### ResNet50 遷移學習管道
 ```python
-class TrainingMonitor:
-    """訓練過程監控器"""
+# run_training.py - ResNet50 訓練入口
+def main_resnet50_training_pipeline():
+    """ResNet50 主要訓練流程"""
     
-    def __init__(self, log_dir="logs/training"):
-        self.log_dir = Path(log_dir)
-        self.log_dir.mkdir(exist_ok=True)
-        
-    def create_tensorboard_callback(self, experiment_name):
-        """建立 TensorBoard 回調"""
-        
-        log_path = self.log_dir / experiment_name
-        
-        return tf.keras.callbacks.TensorBoard(
-            log_dir=str(log_path),
-            histogram_freq=1,
-            write_graph=True,
-            write_images=True,
-            update_freq='epoch'
+    print("🚀 開始 ResNet50 訓練流程...")
+    
+    # 1. 資料載入與預處理
+    print("📊 載入訓練資料...")
+    train_data, val_data, test_data = load_resnet50_training_data()
+    
+    # 2. 建立 ResNet50 模型
+    print("🧠 建立 ResNet50 模型...")
+    model = create_resnet50_digit_model(pretrained=True)
+    
+    # 3. 兩階段訓練策略
+    print("🎯 開始兩階段訓練...")
+    
+    # 階段 1: 訓練分類頭
+    print("⚡ 階段 1: 訓練分類頭 (凍結預訓練層)")
+    model, history_1 = train_stage_1(model, train_data, val_data)
+    
+    # 階段 2: 微調整個網路
+    print("🔧 階段 2: 微調整個網路")
+    model, history_2 = train_stage_2(model, train_data, val_data)
+    
+    # 4. 模型評估
+    print("📈 評估最終模型...")
+    evaluation_results = evaluate_resnet50_model(model, test_data)
+    
+    # 5. 模型儲存
+    print("💾 儲存訓練完成的模型...")
+    save_final_model(model, evaluation_results)
+    
+    print("✅ ResNet50 訓練完成!")
+    return model, history_1, history_2, evaluation_results
+
+def train_stage_1(model, train_data, val_data):
+    """階段 1: 凍結預訓練層，只訓練分類頭"""
+    
+    # 凍結 ResNet50 基礎模型
+    model.layers[1].trainable = False  # base_model 凍結
+    
+    # 編譯模型
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        loss='categorical_crossentropy',
+        metrics=['accuracy', 'top_3_accuracy']
+    )
+    
+    # 訓練配置
+    callbacks_stage1 = [
+        tf.keras.callbacks.ModelCheckpoint(
+            'data/models/checkpoints/stage1_best.keras',
+            monitor='val_accuracy',
+            save_best_only=True,
+            verbose=1
+        ),
+        tf.keras.callbacks.EarlyStopping(
+            monitor='val_accuracy',
+            patience=5,
+            restore_best_weights=True,
+            verbose=1
+        ),
+        tf.keras.callbacks.TensorBoard(
+            log_dir='logs/stage1',
+            histogram_freq=1
         )
+    ]
     
-    def create_custom_logging_callback(self):
-        """建立自定義日誌回調"""
-        
-        class CustomLoggingCallback(tf.keras.callbacks.Callback):
-            def __init__(self, monitor):
-                super().__init__()
-                self.monitor = monitor
-                
-            def on_epoch_end(self, epoch, logs=None):
-                # 記錄詳細的訓練資訊
-                self.monitor.log_epoch_metrics(epoch, logs)
-                
-                # 檢查異常情況
-                if logs.get('loss', 0) > 10:
-                    print("警告: 損失值過高，可能存在梯度爆炸")
-                
-                if logs.get('val_accuracy', 0) < 0.1:
-                    print("警告: 驗證準確率過低，檢查資料或模型")
-        
-        return CustomLoggingCallback(self)
+    # 執行訓練
+    history = model.fit(
+        train_data,
+        validation_data=val_data,
+        epochs=cfg.TRAINING.epochs_stage1,
+        callbacks=callbacks_stage1,
+        verbose=1
+    )
     
-    def log_epoch_metrics(self, epoch, logs):
-        """記錄每個 epoch 的指標"""
-        
-        timestamp = datetime.now().isoformat()
-        log_entry = {
-            'timestamp': timestamp,
-            'epoch': epoch,
-            'metrics': logs
-        }
-        
-        # 儲存到 JSON 日誌
-        log_file = self.log_dir / "training_log.jsonl"
-        with open(log_file, 'a') as f:
-            f.write(json.dumps(log_entry) + '\n')
+    print(f"階段 1 完成 - 最佳驗證準確率: {max(history.history['val_accuracy']):.4f}")
+    return model, history
+
+def train_stage_2(model, train_data, val_data):
+    """階段 2: 解凍並微調整個網路"""
     
-    def plot_training_history(self, history, save_path=None):
-        """繪製訓練歷史"""
-        
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-        
-        # 準確率
-        axes[0, 0].plot(history.history['accuracy'], label='Training')
-        axes[0, 0].plot(history.history['val_accuracy'], label='Validation')
-        axes[0, 0].set_title('Model Accuracy')
-        axes[0, 0].set_xlabel('Epoch')
-        axes[0, 0].set_ylabel('Accuracy')
-        axes[0, 0].legend()
-        
-        # 損失
-        axes[0, 1].plot(history.history['loss'], label='Training')
-        axes[0, 1].plot(history.history['val_loss'], label='Validation')
-        axes[0, 1].set_title('Model Loss')
-        axes[0, 1].set_xlabel('Epoch')
-        axes[0, 1].set_ylabel('Loss')
-        axes[0, 1].legend()
-        
-        # 學習率 (如果有記錄)
-        if 'lr' in history.history:
-            axes[1, 0].plot(history.history['lr'])
-            axes[1, 0].set_title('Learning Rate')
-            axes[1, 0].set_xlabel('Epoch')
-            axes[1, 0].set_ylabel('LR')
-        
-        # 梯度範數 (如果有記錄)
-        if 'gradient_norm' in history.history:
-            axes[1, 1].plot(history.history['gradient_norm'])
-            axes[1, 1].set_title('Gradient Norm')
-            axes[1, 1].set_xlabel('Epoch')
-            axes[1, 1].set_ylabel('Norm')
-        
-        plt.tight_layout()
-        
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        
-        plt.show()
+    # 解凍 ResNet50 基礎模型
+    model.layers[1].trainable = True
+    
+    # 凍結前面的層，只微調後面的層
+    for layer in model.layers[1].layers[:-cfg.MODEL.fine_tune_layers]:
+        layer.trainable = False
+    
+    # 重新編譯 (使用更小的學習率)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=cfg.TRAINING.learning_rate_stage2),
+        loss='categorical_crossentropy',
+        metrics=['accuracy', 'top_3_accuracy']
+    )
+    
+    # 訓練配置
+    callbacks_stage2 = [
+        tf.keras.callbacks.ModelCheckpoint(
+            'data/models/checkpoints/stage2_best.keras',
+            monitor='val_accuracy',
+            save_best_only=True,
+            verbose=1
+        ),
+        tf.keras.callbacks.EarlyStopping(
+            monitor='val_accuracy',
+            patience=cfg.TRAINING.early_stopping_patience,
+            restore_best_weights=True,
+            verbose=1
+        ),
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss',
+            factor=0.5,
+            patience=5,
+            min_lr=1e-7,
+            verbose=1
+        ),
+        tf.keras.callbacks.TensorBoard(
+            log_dir='logs/stage2',
+            histogram_freq=1
+        )
+    ]
+    
+    # 執行微調
+    history = model.fit(
+        train_data,
+        validation_data=val_data,
+        epochs=cfg.TRAINING.epochs_stage2,
+        callbacks=callbacks_stage2,
+        verbose=1
+    )
+    
+    print(f"階段 2 完成 - 最佳驗證準確率: {max(history.history['val_accuracy']):.4f}")
+    return model, history
+
+def load_resnet50_training_data():
+    """載入 ResNet50 專用訓練資料"""
+    
+    # 資料路徑
+    images_dir = Path("data/training/images")
+    labels_file = Path("data/training/labels.csv")
+    
+    # 載入標籤
+    labels_df = pd.read_csv(labels_file)
+    
+    # 載入影像
+    images = []
+    labels = []
+    
+    for _, row in labels_df.iterrows():
+        img_path = images_dir / row['filename']
+        if img_path.exists():
+            # 載入並預處理影像
+            img = cv2.imread(str(img_path))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.resize(img, (224, 224))
+            
+            images.append(img)
+            labels.append(row['label'])
+    
+    # 轉換為 numpy 陣列
+    images = np.array(images, dtype=np.float32)
+    labels = np.array(labels)
+    
+    # 標籤轉為 one-hot 編碼
+    labels_onehot = tf.keras.utils.to_categorical(labels, num_classes=10)
+    
+    # 分割資料集
+    train_images, test_images, train_labels, test_labels = train_test_split(
+        images, labels_onehot, test_size=0.2, random_state=42, stratify=labels
+    )
+    
+    train_images, val_images, train_labels, val_labels = train_test_split(
+        train_images, train_labels, test_size=0.2, random_state=42
+    )
+    
+    # 建立資料擴增生成器
+    train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        preprocessing_function=tf.keras.applications.resnet50.preprocess_input,
+        **cfg.DATA_AUGMENTATION
+    )
+    
+    val_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        preprocessing_function=tf.keras.applications.resnet50.preprocess_input
+    )
+    
+    test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        preprocessing_function=tf.keras.applications.resnet50.preprocess_input
+    )
+    
+    # 建立資料生成器
+    train_generator = train_datagen.flow(
+        train_images, train_labels,
+        batch_size=cfg.MODEL.batch_size,
+        shuffle=True
+    )
+    
+    val_generator = val_datagen.flow(
+        val_images, val_labels,
+        batch_size=cfg.MODEL.batch_size,
+        shuffle=False
+    )
+    
+    test_generator = test_datagen.flow(
+        test_images, test_labels,
+        batch_size=cfg.MODEL.batch_size,
+        shuffle=False
+    )
+    
+    return train_generator, val_generator, test_generator
+
+def evaluate_resnet50_model(model, test_data):
+    """全面評估 ResNet50 模型"""
+    
+    print("📊 開始模型評估...")
+    
+    # 基本評估
+    test_loss, test_accuracy, test_top3_accuracy = model.evaluate(
+        test_data, verbose=1
+    )
+    
+    print(f"測試集準確率: {test_accuracy:.4f}")
+    print(f"Top-3 準確率: {test_top3_accuracy:.4f}")
+    
+    # 詳細預測分析
+    predictions = model.predict(test_data, verbose=1)
+    y_pred = np.argmax(predictions, axis=1)
+    
+    # 獲取真實標籤
+    y_true = []
+    for i, (_, labels_batch) in enumerate(test_data):
+        y_true.extend(np.argmax(labels_batch, axis=1))
+        if i >= len(test_data) - 1:  # 確保覆蓋所有資料
+            break
+    
+    y_true = np.array(y_true[:len(y_pred)])  # 確保長度一致
+    
+    # 分類報告
+    from sklearn.metrics import classification_report, confusion_matrix
+    
+    print("\n分類報告:")
+    print(classification_report(y_true, y_pred, digits=4))
+    
+    # 混淆矩陣
+    cm = confusion_matrix(y_true, y_pred)
+    print("\n混淆矩陣:")
+    print(cm)
+    
+    # 每個類別的準確率
+    class_accuracies = cm.diagonal() / cm.sum(axis=1)
+    print("\n各數字識別準確率:")
+    for digit in range(10):
+        print(f"數字 {digit}: {class_accuracies[digit]:.4f}")
+    
+    # 信心度分析
+    confidence_scores = np.max(predictions, axis=1)
+    print(f"\n平均信心度: {np.mean(confidence_scores):.4f}")
+    print(f"信心度標準差: {np.std(confidence_scores):.4f}")
+    
+    # 低信心度樣本分析
+    low_confidence_indices = np.where(confidence_scores < cfg.MODEL.confidence_threshold)[0]
+    print(f"低信心度樣本數量: {len(low_confidence_indices)} ({len(low_confidence_indices)/len(y_pred)*100:.2f}%)")
+    
+    evaluation_results = {
+        'test_accuracy': test_accuracy,
+        'test_top3_accuracy': test_top3_accuracy,
+        'test_loss': test_loss,
+        'confusion_matrix': cm,
+        'classification_report': classification_report(y_true, y_pred, output_dict=True),
+        'class_accuracies': class_accuracies,
+        'mean_confidence': np.mean(confidence_scores),
+        'low_confidence_ratio': len(low_confidence_indices)/len(y_pred)
+    }
+    
+    return evaluation_results
 ```
 
-## 🚀 模型部署與監控
-
-### 自動化部署管道
+### ResNet50 超參數調整
 ```python
-class ModelDeploymentPipeline:
-    """模型部署管道"""
+def resnet50_hyperparameter_tuning():
+    """ResNet50 超參數調整"""
     
-    def __init__(self):
-        self.deployment_config = {
-            'min_accuracy': 0.85,
-            'max_model_size': 50 * 1024 * 1024,  # 50MB
-            'max_inference_time': 100  # ms
-        }
+    import optuna
     
-    def deploy_model(self, model_path, test_data):
-        """部署模型到生產環境"""
+    def objective(trial):
+        """Optuna 目標函式"""
         
-        # 1. 載入模型
-        model = tf.keras.models.load_model(model_path)
+        # 超參數搜尋空間
+        learning_rate_stage1 = trial.suggest_float('lr_stage1', 1e-4, 1e-2, log=True)
+        learning_rate_stage2 = trial.suggest_float('lr_stage2', 1e-6, 1e-3, log=True)
+        batch_size = trial.suggest_categorical('batch_size', [8, 16, 32])
+        fine_tune_layers = trial.suggest_int('fine_tune_layers', 10, 50)
+        dropout_rate = trial.suggest_float('dropout_rate', 0.3, 0.7)
         
-        # 2. 模型驗證
-        validation_result = self.validate_model(model, test_data)
+        # 建立模型
+        model = create_resnet50_with_params(
+            dropout_rate=dropout_rate,
+            fine_tune_layers=fine_tune_layers
+        )
         
-        if not validation_result['passed']:
-            raise ValueError(f"模型驗證失敗: {validation_result['errors']}")
+        # 載入資料
+        train_data, val_data, _ = load_resnet50_training_data(batch_size=batch_size)
         
-        # 3. 模型最佳化
-        optimized_model_path = self.optimize_model(model)
-        
-        # 4. A/B 測試準備
-        ab_test_config = self.prepare_ab_test(optimized_model_path)
-        
-        # 5. 逐步部署
-        deployment_result = self.gradual_rollout(optimized_model_path, ab_test_config)
-        
-        return deployment_result
+        # 訓練模型
+        try:
+            # 階段 1
+            model.layers[1].trainable = False
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate_stage1),
+                loss='categorical_crossentropy',
+                metrics=['accuracy']
+            )
+            
+            model.fit(train_data, validation_data=val_data, epochs=5, verbose=0)
+            
+            # 階段 2
+            model.layers[1].trainable = True
+            for layer in model.layers[1].layers[:-fine_tune_layers]:
+                layer.trainable = False
+                
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate_stage2),
+                loss='categorical_crossentropy',
+                metrics=['accuracy']
+            )
+            
+            history = model.fit(train_data, validation_data=val_data, epochs=10, verbose=0)
+            
+            # 回傳最佳驗證準確率
+            best_val_accuracy = max(history.history['val_accuracy'])
+            return best_val_accuracy
+            
+        except Exception as e:
+            print(f"訓練失敗: {e}")
+            return 0.0
     
-    def validate_model(self, model, test_data):
-        """驗證模型是否符合部署標準"""
-        
-        X_test, y_test = test_data
-        errors = []
-        
-        # 準確率檢查
-        test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
-        if test_accuracy < self.deployment_config['min_accuracy']:
-            errors.append(f"準確率不足: {test_accuracy:.3f} < {self.deployment_config['min_accuracy']}")
-        
-        # 模型大小檢查
-        model_size = self.get_model_size(model)
-        if model_size > self.deployment_config['max_model_size']:
-            errors.append(f"模型過大: {model_size} bytes")
-        
-        # 推理時間檢查
-        inference_time = self.measure_inference_time(model, X_test[:10])
-        if inference_time > self.deployment_config['max_inference_time']:
-            errors.append(f"推理時間過長: {inference_time:.1f}ms")
-        
-        return {
-            'passed': len(errors) == 0,
-            'errors': errors,
-            'metrics': {
-                'accuracy': test_accuracy,
-                'model_size': model_size,
-                'inference_time': inference_time
-            }
-        }
+    # 建立研究
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective, n_trials=50)
     
-    def gradual_rollout(self, model_path, ab_test_config):
-        """逐步部署新模型"""
-        
-        rollout_stages = [0.05, 0.1, 0.25, 0.5, 1.0]  # 5%, 10%, 25%, 50%, 100%
-        
-        for stage_percent in rollout_stages:
-            print(f"部署階段: {stage_percent*100:.0f}% 使用者")
-            
-            # 更新 A/B 測試比例
-            self.update_ab_test_ratio(ab_test_config, stage_percent)
-            
-            # 監控一段時間
-            time.sleep(300)  # 等待 5 分鐘
-            
-            # 檢查關鍵指標
-            metrics = self.collect_deployment_metrics()
-            
-            if not self.check_deployment_health(metrics):
-                print("部署健康檢查失敗，執行回滾")
-                self.rollback_deployment()
-                return {'status': 'failed', 'stage': stage_percent}
-            
-            print(f"階段 {stage_percent*100:.0f}% 部署成功")
-        
-        return {'status': 'success', 'deployed_at': datetime.now()}
+    print("最佳超參數:")
+    print(study.best_params)
+    print(f"最佳驗證準確率: {study.best_value:.4f}")
+    
+    return study.best_params
 ```
-
-### 生產環境監控
-```python
-class ProductionMonitor:
-    """生產環境模型監控"""
-    
-    def __init__(self):
-        self.metrics_buffer = []
-        self.alert_thresholds = {
-            'accuracy_drop': 0.05,
-            'inference_time_spike': 2.0,
-            'error_rate_spike': 0.1
-        }
-    
-    def monitor_model_performance(self):
-        """監控模型在生產環境的表現"""
-        
-        while True:
-            try:
-                # 收集最近的預測結果
-                recent_predictions = self.get_recent_predictions()
-                
-                # 計算關鍵指標
-                metrics = self.calculate_metrics(recent_predictions)
-                
-                # 檢查是否需要警報
-                alerts = self.check_for_alerts(metrics)
-                
-                if alerts:
-                    self.send_alerts(alerts)
-                
-                # 記錄指標
-                self.log_metrics(metrics)
-                
-                time.sleep(60)  # 每分鐘檢查一次
-                
-            except Exception as e:
-                logger.error(f"監控過程中發生錯誤: {e}")
-                time.sleep(60)
-    
-    def calculate_metrics(self, predictions):
-        """計算關鍵指標"""
-        
-        if not predictions:
-            return {}
-        
-        metrics = {
-            'timestamp': datetime.now(),
-            'total_predictions': len(predictions),
-            'avg_confidence': np.mean([p['confidence'] for p in predictions]),
-            'low_confidence_rate': len([p for p in predictions if p['confidence'] < 0.8]) / len(predictions),
-            'avg_inference_time': np.mean([p['inference_time'] for p in predictions]),
-            'error_rate': len([p for p in predictions if p.get('error')]) / len(predictions)
-        }
-        
-        return metrics
-    
-    def check_for_alerts(self, current_metrics):
-        """檢查是否需要發送警報"""
-        
-        alerts = []
-        
-        # 比較歷史指標
-        if len(self.metrics_buffer) > 0:
-            baseline = self.calculate_baseline_metrics()
-            
-            # 準確率下降檢查
-            if current_metrics.get('avg_confidence', 0) < baseline.get('avg_confidence', 1) - self.alert_thresholds['accuracy_drop']:
-                alerts.append({
-                    'type': 'accuracy_drop',
-                    'message': f"模型信心度下降: {current_metrics['avg_confidence']:.3f} vs {baseline['avg_confidence']:.3f}",
-                    'severity': 'high'
-                })
-            
-            # 推理時間激增檢查
-            if current_metrics.get('avg_inference_time', 0) > baseline.get('avg_inference_time', 0) * self.alert_thresholds['inference_time_spike']:
-                alerts.append({
-                    'type': 'inference_time_spike',
-                    'message': f"推理時間激增: {current_metrics['avg_inference_time']:.1f}ms vs {baseline['avg_inference_time']:.1f}ms",
-                    'severity': 'medium'
-                })
-            
-            # 錯誤率激增檢查
-            if current_metrics.get('error_rate', 0) > self.alert_thresholds['error_rate_spike']:
-                alerts.append({
-                    'type': 'error_rate_spike',
-                    'message': f"錯誤率過高: {current_metrics['error_rate']:.3f}",
-                    'severity': 'high'
-                })
-        
-        return alerts
-```
-
-透過這個完整的訓練工作流程，Make10 專案能夠系統化地管理 AI 模型的整個生命週期，從資料收集到生產部署，確保模型品質和系統穩定性。

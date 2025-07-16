@@ -152,50 +152,217 @@ logger.error("錯誤資訊")     # 錯誤處理
 # logs/make10_system.log (保留 7 天)
 ```
 
-## 🧠 AI 模型架構 (規劃中)
+## 🧠 ResNet50 AI 模型架構
 
-### 預計模型設計
+### ResNet50 模型設計
 ```python
-# 數字識別 CNN 架構
-def create_digit_recognition_model():
-    """建立數字識別模型"""
+# 基於 ResNet50 的數字識別架構
+def create_resnet50_digit_model(pretrained=True):
+    """建立 ResNet50 數字識別模型"""
+    
+    # 載入 ResNet50 預訓練模型
+    base_model = tf.keras.applications.ResNet50(
+        weights='imagenet' if pretrained else None,
+        include_top=False,
+        input_shape=(224, 224, 3)
+    )
+    
+    # 建立完整模型
     model = tf.keras.Sequential([
-        # 特徵萃取層
-        tf.keras.layers.Conv2D(32, (3,3), activation='relu', 
-                              input_shape=(28, 28, 1)),
-        tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.25),
+        # 輸入層
+        tf.keras.layers.Input(shape=(224, 224, 3)),
         
-        # 深度特徵層
-        tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.25),
+        # ResNet50 特徵提取器
+        base_model,
         
-        # 分類層
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(128, activation='relu'),
+        # 全域平均池化
+        tf.keras.layers.GlobalAveragePooling2D(),
+        
+        # 分類頭
+        tf.keras.layers.Dense(512, activation='relu'),
         tf.keras.layers.Dropout(0.5),
-        tf.keras.layers.Dense(10, activation='softmax')
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Dense(10, activation='softmax')  # 10 類別數字
     ])
+    
     return model
+
+def create_resnet50_ensemble():
+    """建立 ResNet50 集成模型"""
+    
+    # 建立多個略有不同的 ResNet50 模型
+    models = []
+    
+    for i in range(3):  # 3 個模型集成
+        model = create_resnet50_digit_model(pretrained=True)
+        
+        # 添加些許隨機性
+        if i > 0:
+            # 不同的 dropout 率
+            model.layers[-3] = tf.keras.layers.Dropout(0.5 + i * 0.1)
+        
+        models.append(model)
+    
+    return models
 ```
 
-### 資料流程設計
+### 遷移學習策略
 ```python
-# 預計的推理流程
-def predict_digit(image_region):
-    """數字識別推理"""
-    # 1. 影像預處理
-    processed = preprocess_image(image_region)
+def implement_transfer_learning_strategy():
+    """實作遷移學習策略"""
+    
+    strategies = {
+        'feature_extraction': {
+            'description': '凍結預訓練層，只訓練分類頭',
+            'base_trainable': False,
+            'learning_rate': 0.001,
+            'epochs': 10,
+            'use_case': '資料量較少時使用'
+        },
+        
+        'fine_tuning': {
+            'description': '解凍部分層進行微調',
+            'base_trainable': True,
+            'freeze_layers': -20,  # 凍結前 N 層
+            'learning_rate': 0.0001,
+            'epochs': 20,
+            'use_case': '有足夠資料時使用'
+        },
+        
+        'full_training': {
+            'description': '從頭訓練整個網路',
+            'base_trainable': True,
+            'freeze_layers': 0,
+            'learning_rate': 0.0001,
+            'epochs': 50,
+            'use_case': '大量資料且計算資源充足'
+        }
+    }
+    
+    return strategies
+```
+
+### 資料流程設計 (ResNet50)
+```python
+# ResNet50 專用推理流程
+def predict_digit_resnet50(image_region):
+    """ResNet50 數字識別推理"""
+    
+    # 1. 影像預處理 (224x224 RGB)
+    processed = preprocess_for_resnet50(image_region)
     
     # 2. 模型推理
-    prediction = model.predict(processed)
+    prediction = resnet50_model.predict(processed, verbose=0)
     
     # 3. 結果後處理
-    digit = np.argmax(prediction)
-    confidence = np.max(prediction)
+    digit = np.argmax(prediction[0])
+    confidence = np.max(prediction[0])
+    all_probs = prediction[0]
+    
+    # 4. 信心度檢查
+    if confidence < cfg.MODEL.confidence_threshold:
+        return None, confidence  # 低信心度樣本
     
     return digit, confidence
+
+def preprocess_for_resnet50(image_region):
+    """ResNet50 專用預處理"""
+    
+    # 調整大小到 224x224
+    resized = cv2.resize(image_region, (224, 224))
+    
+    # 確保 RGB 格式
+    if len(resized.shape) == 2:
+        rgb_image = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+    elif resized.shape[2] == 1:
+        rgb_image = np.repeat(resized, 3, axis=2)
+    else:
+        rgb_image = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+    
+    # ImageNet 標準化
+    normalized = tf.keras.applications.resnet50.preprocess_input(
+        rgb_image.astype(np.float32)
+    )
+    
+    # 添加批次維度
+    return np.expand_dims(normalized, axis=0)
+
+def ensemble_prediction(image_region, models):
+    """集成模型預測"""
+    
+    predictions = []
+    
+    # 收集所有模型的預測
+    for model in models:
+        pred = model.predict(preprocess_for_resnet50(image_region), verbose=0)
+        predictions.append(pred[0])
+    
+    # 平均集成
+    avg_prediction = np.mean(predictions, axis=0)
+    
+    # 投票集成
+    votes = [np.argmax(pred) for pred in predictions]
+    vote_counts = np.bincount(votes, minlength=10)
+    voted_digit = np.argmax(vote_counts)
+    
+    return {
+        'average_prediction': {
+            'digit': int(np.argmax(avg_prediction)),
+            'confidence': float(np.max(avg_prediction)),
+            'probabilities': avg_prediction.tolist()
+        },
+        'voting_prediction': {
+            'digit': int(voted_digit),
+            'votes': vote_counts.tolist(),
+            'consensus': float(np.max(vote_counts) / len(models))
+        }
+    }
+```
+
+### 模型最佳化技術
+```python
+def optimize_resnet50_inference():
+    """ResNet50 推理最佳化"""
+    
+    optimization_techniques = {
+        'model_quantization': {
+            'description': '模型量化減少記憶體使用',
+            'implementation': '''
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            tflite_model = converter.convert()
+            '''
+        },
+        
+        'batch_inference': {
+            'description': '批次推理提升吞吐量',
+            'implementation': '''
+            # 累積多個影像再一次推理
+            if len(batch_images) >= batch_size:
+                predictions = model.predict(np.array(batch_images))
+                batch_images.clear()
+            '''
+        },
+        
+        'model_pruning': {
+            'description': '模型剪枝移除不重要的連接',
+            'implementation': '''
+            import tensorflow_model_optimization as tfmot
+            prune_low_magnitude = tfmot.sparsity.keras.prune_low_magnitude
+            pruned_model = prune_low_magnitude(model)
+            '''
+        },
+        
+        'mixed_precision': {
+            'description': '混合精度加速訓練',
+            'implementation': '''
+            policy = tf.keras.mixed_precision.Policy('mixed_float16')
+            tf.keras.mixed_precision.set_global_policy(policy)
+            '''
+        }
+    }
+    
+    return optimization_techniques
 ```
 
 ## 📊 效能最佳化策略

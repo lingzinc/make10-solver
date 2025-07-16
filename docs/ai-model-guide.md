@@ -32,11 +32,11 @@ gantt
 
 ### 模型目標
 - **主要任務**: 數字識別 (0-9 十類別分類)
-- **輸入格式**: 28×28 灰階影像
+- **輸入格式**: 224×224 RGB 影像 (ResNet50 標準輸入)
 - **輸出格式**: 10 類別機率分佈
-- **目標準確率**: >95% (驗證集)
-- **推理速度**: <5ms (單次預測)
-- **模型大小**: <10MB (部署限制)
+- **目標準確率**: >98% (驗證集，ResNet50 深度網路)
+- **推理速度**: <10ms (單次預測)
+- **模型大小**: <100MB (ResNet50 預訓練模型)
 
 ### 技術棧選擇
 ```python
@@ -52,57 +52,140 @@ pillow = "11.3.0"           # 影像格式支援
 
 ## 🏗️ 模型架構設計
 
-### CNN 網路結構 (規劃)
+### ResNet50 網路結構 (更新)
 ```python
-def create_digit_recognition_model():
-    """建立數字識別 CNN 模型"""
+def create_resnet50_digit_model(pretrained=True):
+    """建立基於 ResNet50 的數字識別模型"""
+    
+    # 載入預訓練 ResNet50 (不含頂層)
+    base_model = tf.keras.applications.ResNet50(
+        weights='imagenet' if pretrained else None,
+        include_top=False,
+        input_shape=(224, 224, 3)
+    )
+    
+    # 凍結預訓練層 (可選)
+    if pretrained:
+        base_model.trainable = False
+    
+    # 添加自定義分類層
     model = tf.keras.Sequential([
         # 輸入層
-        tf.keras.layers.Input(shape=(28, 28, 1)),
+        tf.keras.layers.Input(shape=(224, 224, 3)),
         
-        # 特徵萃取層 1
-        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.25),
+        # ResNet50 特徵提取
+        base_model,
         
-        # 特徵萃取層 2
-        tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.25),
-        
-        # 深度特徵層
-        tf.keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dropout(0.25),
-        
-        # 分類層
+        # 全域平均池化
         tf.keras.layers.GlobalAveragePooling2D(),
-        tf.keras.layers.Dense(128, activation='relu'),
+        
+        # 全連接層
+        tf.keras.layers.Dense(512, activation='relu'),
         tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.BatchNormalization(),
+        
+        # 輸出層 (10 類別數字分類)
         tf.keras.layers.Dense(10, activation='softmax')
     ])
     
     return model
+
+def create_resnet50_from_scratch():
+    """從頭訓練 ResNet50 (適用於大量資料)"""
+    model = tf.keras.applications.ResNet50(
+        weights=None,  # 不使用預訓練權重
+        include_top=False,
+        input_shape=(224, 224, 3)
+    )
+    
+    # 添加分類頭
+    x = tf.keras.layers.GlobalAveragePooling2D()(model.output)
+    x = tf.keras.layers.Dense(512, activation='relu')(x)
+    x = tf.keras.layers.Dropout(0.5)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    outputs = tf.keras.layers.Dense(10, activation='softmax')(x)
+    
+    final_model = tf.keras.Model(inputs=model.input, outputs=outputs)
+    return final_model
+```
+
+### 遷移學習策略
+```python
+def fine_tune_resnet50(model, train_data, val_data):
+    """ResNet50 遷移學習微調"""
+    
+    # 階段 1: 凍結預訓練層，只訓練分類頭
+    model.layers[1].trainable = False  # base_model 凍結
+    
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
+    
+    # 訓練分類頭
+    history_1 = model.fit(
+        train_data,
+        validation_data=val_data,
+        epochs=10,
+        verbose=1
+    )
+    
+    # 階段 2: 解凍部分層進行微調
+    model.layers[1].trainable = True  # 解凍 base_model
+    
+    # 凍結前面的層，只微調後面的層
+    for layer in model.layers[1].layers[:-20]:
+        layer.trainable = False
+    
+    # 使用較小的學習率微調
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
+    
+    # 繼續訓練
+    history_2 = model.fit(
+        train_data,
+        validation_data=val_data,
+        epochs=20,
+        verbose=1
+    )
+    
+    return model, history_1, history_2
 ```
 
 ### 模型配置參數
 ```python
-# config/settings.py - AI 模型配置
+# config/settings.py - AI 模型配置 (ResNet50)
 cfg.MODEL = EasyDict({
-    'input_shape': (28, 28, 1),          # 輸入影像尺寸
+    'input_shape': (224, 224, 3),        # ResNet50 標準輸入尺寸
     'num_classes': 10,                   # 分類數量 (0-9)
-    'batch_size': 32,                    # 批次大小
-    'confidence_threshold': 0.8,         # 信心度閾值
-    'voting_threshold': 0.6,             # 投票閾值
+    'batch_size': 16,                    # 批次大小 (ResNet50 記憶體需求較大)
+    'confidence_threshold': 0.9,         # 信心度閾值 (提高精度)
+    'voting_threshold': 0.7,             # 投票閾值
+    'use_pretrained': True,              # 使用預訓練權重
+    'fine_tune_layers': 20,              # 微調的層數
 })
 
 cfg.TRAINING = EasyDict({
-    'epochs': 50,                        # 訓練輪數
-    'learning_rate': 0.001,              # 學習率
+    'epochs_stage1': 10,                 # 第一階段訓練輪數 (凍結預訓練層)
+    'epochs_stage2': 20,                 # 第二階段訓練輪數 (微調)
+    'learning_rate_stage1': 0.001,       # 第一階段學習率
+    'learning_rate_stage2': 0.0001,      # 第二階段學習率 (較小)
     'validation_split': 0.2,             # 驗證集比例
-    'early_stopping_patience': 10,       # 早停忍耐度
+    'early_stopping_patience': 15,       # 早停忍耐度 (增加)
+})
+
+cfg.DATA_AUGMENTATION = EasyDict({
+    'rotation_range': 10,                # 旋轉角度範圍
+    'width_shift_range': 0.1,            # 水平移動範圍
+    'height_shift_range': 0.1,           # 垂直移動範圍
+    'zoom_range': 0.1,                   # 縮放範圍
+    'horizontal_flip': False,            # 不水平翻轉 (數字)
+    'fill_mode': 'constant',             # 填充模式
+    'cval': 0.0,                         # 填充值
 })
 ```
 
@@ -122,46 +205,123 @@ data/
     └── templates/          # 模板影像
 ```
 
-### 資料預處理流程 (規劃)
+### 資料預處理流程 (ResNet50 適配)
 ```python
-def preprocess_image(image):
-    """影像預處理管道"""
-    # 1. 尺寸正規化
-    resized = cv2.resize(image, (28, 28))
+def preprocess_image_for_resnet50(image):
+    """影像預處理管道 - ResNet50 版本"""
     
-    # 2. 灰階轉換
-    if len(resized.shape) == 3:
-        gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+    # 1. 尺寸調整到 ResNet50 標準輸入
+    resized = cv2.resize(image, (224, 224))
+    
+    # 2. 灰階轉 RGB (如果需要)
+    if len(resized.shape) == 2:
+        # 灰階影像轉為 3 通道
+        rgb_image = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+    elif resized.shape[2] == 1:
+        rgb_image = np.repeat(resized, 3, axis=2)
     else:
-        gray = resized
+        rgb_image = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
     
-    # 3. 正規化 [0, 1]
-    normalized = gray.astype(np.float32) / 255.0
+    # 3. 正規化 (ImageNet 預訓練標準)
+    normalized = rgb_image.astype(np.float32)
+    normalized = tf.keras.applications.resnet50.preprocess_input(normalized)
     
     # 4. 新增批次維度
-    batched = np.expand_dims(normalized, axis=[0, -1])
+    batched = np.expand_dims(normalized, axis=0)
     
     return batched
 
-def augment_training_data(images, labels):
-    """資料擴增策略"""
-    # 旋轉、縮放、雜訊、亮度調整
-    # 目標: 擴增 5-10 倍資料量
-    pass
+def augment_training_data_resnet50(images, labels):
+    """ResNet50 專用資料擴增策略"""
+    
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        rotation_range=10,           # 輕微旋轉
+        width_shift_range=0.1,       # 水平移動
+        height_shift_range=0.1,      # 垂直移動
+        zoom_range=0.1,              # 縮放
+        brightness_range=[0.8, 1.2], # 亮度調整
+        fill_mode='constant',        # 邊界填充
+        cval=0.0,                    # 填充值
+        preprocessing_function=tf.keras.applications.resnet50.preprocess_input
+    )
+    
+    # 生成擴增資料
+    augmented_generator = datagen.flow(
+        images, labels,
+        batch_size=32,
+        shuffle=True
+    )
+    
+    return augmented_generator
+
+def create_data_pipeline_resnet50(image_dir, label_file, batch_size=16):
+    """建立 ResNet50 資料管道"""
+    
+    # 讀取資料
+    images, labels = load_training_data(image_dir, label_file)
+    
+    # 轉換為 TensorFlow 資料集
+    dataset = tf.data.Dataset.from_tensor_slices((images, labels))
+    
+    # 預處理函式
+    def preprocess_fn(image, label):
+        # 調整大小並轉換為 RGB
+        image = tf.image.resize(image, [224, 224])
+        image = tf.cast(image, tf.float32)
+        
+        # 如果是灰階，複製到 3 個通道
+        if tf.shape(image)[-1] == 1:
+            image = tf.repeat(image, 3, axis=-1)
+        
+        # ImageNet 標準化
+        image = tf.keras.applications.resnet50.preprocess_input(image)
+        
+        return image, label
+    
+    # 應用預處理
+    dataset = dataset.map(preprocess_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # 批次化和快取
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    
+    return dataset
 ```
 
-### 推理流程 (規劃)
+### 推理流程 (ResNet50 版本)
 ```python
-class DigitPredictor:
-    """數字識別預測器"""
+class ResNet50DigitPredictor:
+    """基於 ResNet50 的數字識別預測器"""
     
     def __init__(self, model_path):
         self.model = tf.keras.models.load_model(model_path)
+        self.input_size = (224, 224)
+        
+    def preprocess_single_image(self, image_region):
+        """單一影像預處理"""
+        # 調整大小
+        resized = cv2.resize(image_region, self.input_size)
+        
+        # 確保 RGB 格式
+        if len(resized.shape) == 2:
+            rgb_image = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+        elif resized.shape[2] == 1:
+            rgb_image = np.repeat(resized, 3, axis=2)
+        else:
+            rgb_image = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        
+        # ImageNet 標準預處理
+        processed = tf.keras.applications.resnet50.preprocess_input(
+            rgb_image.astype(np.float32)
+        )
+        
+        # 新增批次維度
+        return np.expand_dims(processed, axis=0)
         
     def predict_digit(self, image_region):
         """預測單一數字"""
         # 預處理
-        processed = self.preprocess(image_region)
+        processed = self.preprocess_single_image(image_region)
         
         # 模型推理
         prediction = self.model.predict(processed, verbose=0)
@@ -170,20 +330,74 @@ class DigitPredictor:
         digit = np.argmax(prediction[0])
         confidence = np.max(prediction[0])
         
-        return digit, confidence
+        # 所有類別的機率
+        probabilities = prediction[0]
+        
+        return {
+            'digit': int(digit),
+            'confidence': float(confidence),
+            'probabilities': probabilities.tolist()
+        }
     
     def predict_batch(self, image_regions):
         """批次預測多個數字"""
-        batch = np.stack([self.preprocess(img) for img in image_regions])
+        # 批次預處理
+        batch_data = []
+        for img in image_regions:
+            processed = self.preprocess_single_image(img)
+            batch_data.append(processed[0])  # 移除批次維度
+        
+        batch = np.stack(batch_data)
+        
+        # 批次推理
         predictions = self.model.predict(batch, verbose=0)
         
+        # 解析結果
         results = []
         for pred in predictions:
             digit = np.argmax(pred)
             confidence = np.max(pred)
-            results.append((digit, confidence))
+            results.append({
+                'digit': int(digit),
+                'confidence': float(confidence),
+                'probabilities': pred.tolist()
+            })
             
         return results
+    
+    def predict_with_tta(self, image_region, num_augmentations=5):
+        """使用測試時增強 (TTA) 提高預測準確性"""
+        predictions = []
+        
+        # 原始預測
+        original_pred = self.predict_digit(image_region)
+        predictions.append(original_pred['probabilities'])
+        
+        # 增強版本預測
+        for _ in range(num_augmentations):
+            # 輕微旋轉和縮放
+            h, w = image_region.shape[:2]
+            angle = np.random.uniform(-5, 5)
+            scale = np.random.uniform(0.95, 1.05)
+            
+            center = (w//2, h//2)
+            M = cv2.getRotationMatrix2D(center, angle, scale)
+            augmented = cv2.warpAffine(image_region, M, (w, h))
+            
+            pred = self.predict_digit(augmented)
+            predictions.append(pred['probabilities'])
+        
+        # 平均預測結果
+        avg_probs = np.mean(predictions, axis=0)
+        final_digit = np.argmax(avg_probs)
+        final_confidence = np.max(avg_probs)
+        
+        return {
+            'digit': int(final_digit),
+            'confidence': float(final_confidence),
+            'probabilities': avg_probs.tolist(),
+            'tta_predictions': len(predictions)
+        }
 ```
 
 ## 🏃‍♂️ 訓練流程設計

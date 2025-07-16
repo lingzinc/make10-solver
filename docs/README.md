@@ -47,6 +47,16 @@ main()
 from src.automation.screen_utils import capture_screen
 screenshot = capture_screen()
 
+# ResNet50 模型載入
+from src.ai.resnet50_predictor import ResNet50DigitPredictor
+predictor = ResNet50DigitPredictor('data/models/exports/resnet50_model.keras')
+
+# 數字預測 (ResNet50)
+digit, confidence = predictor.predict_digit(cell_image)
+
+# 批次預測
+results = predictor.predict_batch(cell_images)
+
 # 配置存取
 from config.settings import cfg
 model_path = cfg.PATHS.MODEL.main_model
@@ -58,13 +68,23 @@ model_path = cfg.PATHS.MODEL.main_model
 cfg.AUTOMATION.click_delay      # 點擊延遲
 cfg.AUTOMATION.retry_attempts   # 重試次數
 
-# AI 模型參數  
-cfg.MODEL.confidence_threshold  # 信心閾值
-cfg.MODEL.batch_size           # 批次大小
+# ResNet50 模型參數  
+cfg.MODEL.confidence_threshold  # 信心度閾值 (建議 0.9)
+cfg.MODEL.batch_size           # 批次大小 (建議 16)
+cfg.MODEL.use_pretrained       # 使用預訓練權重
+cfg.MODEL.fine_tune_layers     # 微調層數 (建議 20)
 
-# 影像處理參數
-cfg.IMAGE.PROCESSING.cell_size  # 格子大小
-cfg.IMAGE.PROCESSING.board_size # 棋盤大小
+# 影像處理參數 (ResNet50)
+cfg.IMAGE.PROCESSING.input_size    # 輸入尺寸 (224, 224, 3)
+cfg.IMAGE.PROCESSING.cell_size     # 格子大小
+cfg.IMAGE.PROCESSING.board_size    # 棋盤大小
+cfg.IMAGE.PROCESSING.preprocessing # 'resnet50' 預處理
+
+# 訓練參數
+cfg.TRAINING.epochs_stage1         # 第一階段訓練輪數
+cfg.TRAINING.epochs_stage2         # 第二階段微調輪數
+cfg.TRAINING.learning_rate_stage1  # 第一階段學習率
+cfg.TRAINING.learning_rate_stage2  # 第二階段學習率
 ```
 
 ### 測試指令
@@ -72,11 +92,17 @@ cfg.IMAGE.PROCESSING.board_size # 棋盤大小
 # 完整測試套件
 uv run pytest -v --cov=src
 
+# ResNet50 模型測試
+uv run pytest tests/test_resnet50_predictor.py -v
+
 # 特定模組測試
 uv run pytest tests/test_screen_utils.py -v
 
 # 覆蓋率報告
 uv run pytest --cov=src --cov-report=html
+
+# 效能測試
+uv run pytest tests/test_performance.py -v --benchmark-only
 ```
 
 ## 📋 文件撰寫規範
