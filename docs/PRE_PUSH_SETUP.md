@@ -5,10 +5,7 @@
 
 您的 pre-push hook 已經設定完成！
 
-- **主要 Hook**: `.git/hooks/pre-push` (Git 執行的入口點)
-- **PowerShell 實作**: `.git/hooks/pre-push.ps1` (實際的測試邏輯)
-
-Hook 架構：Git → shell 橋接器 → PowerShell 腳本
+**Hook 檔案**: `.git/hooks/pre-push` (使用 uv + pytest 的測試 hook)
 
 ## 工作原理
 
@@ -53,16 +50,13 @@ git push --no-verify origin master
 ```bash
 # 測試完整的 hook 流程（推薦）
 git push --dry-run origin master
-
-# 或直接測試 PowerShell 腳本
-powershell -ExecutionPolicy Bypass -File .git/hooks/pre-push.ps1
 ```
 
 ## 疑難排解
 
 ### 問題 1: Hook 沒有執行
-- 確認檔案位置：`.git/hooks/pre-push` (入口點) 和 `.git/hooks/pre-push.ps1` (實作)
-- 確認 PowerShell 執行原則：`Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+- 確認檔案位置：`.git/hooks/pre-push`
+- 確認檔案權限：在 Git Bash 中執行 `chmod +x .git/hooks/pre-push`
 
 ### 問題 2: uv 命令找不到
 - 確認 uv 已安裝：`uv --version`
