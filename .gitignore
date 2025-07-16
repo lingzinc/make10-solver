@@ -166,7 +166,6 @@ temp_images/
 !demo_*.jpeg
 
 # IDE and Editor files
-.vscode/
 .idea/
 *.swp
 *.swo
